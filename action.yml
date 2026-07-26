@@ -254,7 +254,7 @@ runs:
 
     - name: Upload review artifacts
       if: ${{ always() && inputs.upload_artifacts == 'true' }}
-      uses: actions/upload-artifact@v7
+      uses: aiwpt/upload-artifact@main
       with:
         name: ocr-review-result-${{ github.run_id }}-${{ github.run_attempt }}
         path: |
