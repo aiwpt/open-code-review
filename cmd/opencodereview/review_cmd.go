@@ -9,11 +9,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/open-code-review/open-code-review/internal/agent"
-	"github.com/open-code-review/open-code-review/internal/mcp"
-	"github.com/open-code-review/open-code-review/internal/session"
-	"github.com/open-code-review/open-code-review/internal/telemetry"
-	"github.com/open-code-review/open-code-review/internal/tool"
+	"github.com/alibaba/open-code-review/internal/agent"
+	"github.com/alibaba/open-code-review/internal/mcp"
+	"github.com/alibaba/open-code-review/internal/session"
+	"github.com/alibaba/open-code-review/internal/telemetry"
+	"github.com/alibaba/open-code-review/internal/tool"
 
 	"go.opentelemetry.io/otel/codes"
 )
@@ -274,6 +274,26 @@ func initMCPClients(ctx context.Context, cfg *Config, tools *tool.Registry, repo
 	var clients []*mcp.Client
 	for _, name := range mcpNames {
 		serverCfg := cfg.MCPServers[name]
+
+		isRemote := serverCfg.Type == "remote"
+
+		if isRemote {
+			if serverCfg.URL == "" {
+				fmt.Fprintf(os.Stderr, "[ocr] WARNING: remote MCP server %q has no URL configured, skipping\n", name)
+				continue
+			}
+			initCtx, initCancel := context.WithTimeout(ctx, 30*time.Second)
+			mc, err := mcp.NewRemoteClient(initCtx, name, serverCfg.URL, serverCfg.Headers, version)
+			initCancel()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "[ocr] WARNING: failed to connect to remote MCP server %q: %v\n", name, err)
+				continue
+			}
+			clients = append(clients, mc)
+			mcp.RegisterAll(tools, mc, serverCfg.Tools)
+			continue
+		}
+
 		if serverCfg.Command == "" {
 			fmt.Fprintf(os.Stderr, "[ocr] WARNING: MCP server %q has no command configured, skipping\n", name)
 			continue
