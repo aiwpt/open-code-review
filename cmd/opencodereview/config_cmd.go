@@ -10,7 +10,75 @@ import (
 	"strings"
 
 	"github.com/alibaba/open-code-review/internal/llm"
+	"github.com/spf13/cobra"
 )
+
+var configCmd = &cobra.Command{
+	Use:   "config",
+	Short: "Manage configuration settings",
+	Long: `Configuration management.
+
+Examples:
+  # Provider setup (interactive)
+  ocr config provider
+  ocr config model
+
+  # Provider setup (non-interactive)
+  ocr config set provider anthropic
+  ocr config set model claude-opus-4-6
+  ocr config set providers.anthropic.api_key "$ANTHROPIC_API_KEY"
+
+  # Custom provider
+  ocr config set provider my-gateway
+  ocr config set custom_providers.my-gateway.url https://gateway.internal.com/v1
+  ocr config set custom_providers.my-gateway.protocol openai`,
+}
+
+var configSetCmd = &cobra.Command{
+	Use:     "set <key> <value>",
+	Short:   "Set a configuration value",
+	Example: "  ocr config set llm.model claude-opus-4-6\n  ocr config set provider anthropic",
+	Args:    cobra.ExactArgs(2),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return runConfigSet(args[0], args[1])
+	},
+}
+
+var configUnsetCmd = &cobra.Command{
+	Use:     "unset <key>",
+	Short:   "Remove a configuration value",
+	Long:    "Remove a provider, custom_providers.<name>, or mcp_servers.<name>.",
+	Example: "  ocr config unset provider\n  ocr config unset custom_providers.my-provider\n  ocr config unset mcp_servers.github",
+	Args:    cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return runConfigUnset(args[0])
+	},
+}
+
+var configProviderCmd = &cobra.Command{
+	Use:   "provider",
+	Short: "Interactive provider setup",
+	Args:  cobra.NoArgs,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return runConfigProvider()
+	},
+}
+
+var configModelCmd = &cobra.Command{
+	Use:   "model",
+	Short: "Interactive model selection",
+	Args:  cobra.NoArgs,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return runConfigModel()
+	},
+}
+
+func init() {
+	configCmd.AddCommand(configSetCmd)
+	configCmd.AddCommand(configUnsetCmd)
+	configCmd.AddCommand(configProviderCmd)
+	configCmd.AddCommand(configModelCmd)
+}
 
 // Default config file location: ~/.opencodereview/config.json
 func defaultConfigPath() (string, error) {
@@ -29,40 +97,6 @@ func resolveConfigPath() (string, error) {
 		return p, nil
 	}
 	return defaultConfigPath()
-}
-
-func runConfig(args []string) error {
-	if len(args) == 0 {
-		printConfigUsage()
-		return nil
-	}
-
-	switch args[0] {
-	case "provider":
-		if len(args) != 1 {
-			return fmt.Errorf("config provider does not accept arguments; use 'ocr config set provider <name>' for non-interactive setup")
-		}
-		return runConfigProvider()
-	case "model":
-		if len(args) != 1 {
-			return fmt.Errorf("config model does not accept arguments; use 'ocr config set model <name>' for non-interactive setup")
-		}
-		return runConfigModel()
-	}
-
-	action, err := parseConfigArgs(args)
-	if err != nil {
-		return err
-	}
-
-	switch action.subCmd {
-	case "set":
-		return runConfigSet(action.key, action.value)
-	case "unset":
-		return runConfigUnset(action.key)
-	default:
-		return fmt.Errorf("unknown config sub-command: %s", action.subCmd)
-	}
 }
 
 func runConfigSet(key, value string) error {
@@ -90,18 +124,25 @@ func runConfigSet(key, value string) error {
 		displayValue = maskKey(value)
 	}
 	fmt.Printf("Set %s = %s\n", key, displayValue)
+	if warning := legacyLLMShadowWarning(cfg.Provider, key); warning != "" {
+		fmt.Fprint(os.Stderr, warning)
+	}
 	return nil
 }
 
 func runConfigUnset(key string) error {
-	parts := strings.SplitN(key, ".", 2)
-	if len(parts) != 2 || parts[1] == "" {
-		return fmt.Errorf("unset supports custom_providers.<name> and mcp_servers.<name>")
-	}
-
 	configPath, err := defaultConfigPath()
 	if err != nil {
 		return err
+	}
+
+	if key == "provider" {
+		return unsetActiveProvider(configPath)
+	}
+
+	parts := strings.SplitN(key, ".", 2)
+	if len(parts) != 2 || parts[1] == "" {
+		return fmt.Errorf("unset supports provider, custom_providers.<name>, and mcp_servers.<name>")
 	}
 
 	switch parts[0] {
@@ -110,8 +151,37 @@ func runConfigUnset(key string) error {
 	case "mcp_servers":
 		return unsetMCPServer(configPath, parts[1])
 	default:
-		return fmt.Errorf("unset supports custom_providers.<name> and mcp_servers.<name>")
+		return fmt.Errorf("unset supports provider, custom_providers.<name>, and mcp_servers.<name>")
 	}
+}
+
+func unsetActiveProvider(configPath string) error {
+	cfg, err := loadOrCreateConfig(configPath)
+	if err != nil {
+		return fmt.Errorf("load config: %w", err)
+	}
+
+	cfg.Provider = ""
+	cfg.Model = ""
+	if err := saveConfig(configPath, cfg); err != nil {
+		return err
+	}
+
+	fmt.Println("Cleared active provider and model.")
+	return nil
+}
+
+func legacyLLMShadowWarning(provider, key string) string {
+	if provider == "" || !strings.HasPrefix(key, "llm.") {
+		return ""
+	}
+	section := "custom_providers"
+	if _, isPreset := llm.LookupProvider(provider); isPreset {
+		section = "providers"
+	}
+	return fmt.Sprintf("[ocr] WARNING: provider %q is active and takes precedence over llm.* settings.\n"+
+		"[ocr] Use 'ocr config set %s.%s.<field> <value>' to configure the active provider,\n"+
+		"[ocr] or run 'ocr config unset provider' to disable provider-based config.\n", provider, section, provider)
 }
 
 func unsetCustomProvider(configPath, name string) error {
