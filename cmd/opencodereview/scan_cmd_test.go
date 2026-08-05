@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 alibaba/open-code-review Contributors
+
 package main
 
 import (
@@ -175,6 +178,36 @@ func TestParseScanFlags_ModelOverride(t *testing.T) {
 	}
 	if opts.model != "claude-opus-4-6" {
 		t.Errorf("model = %q, want claude-opus-4-6", opts.model)
+	}
+}
+
+func TestParseScanFlags_ProviderAndModelOverrides(t *testing.T) {
+	opts, err := parseScanFlags([]string{"--provider", "my-gateway", "--model", "llama-3-8b"})
+	if err != nil {
+		t.Fatalf("parseScanFlags: %v", err)
+	}
+	if opts.provider != "my-gateway" || opts.model != "llama-3-8b" {
+		t.Fatalf("provider=%q model=%q", opts.provider, opts.model)
+	}
+}
+
+func TestParseScanFlags_Resume(t *testing.T) {
+	opts, err := parseScanFlags([]string{"--resume", "session-123"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if opts.resume != "session-123" {
+		t.Errorf("resume = %q, want session-123", opts.resume)
+	}
+}
+
+func TestParseScanFlags_PreviewWithResume(t *testing.T) {
+	_, err := parseScanFlags([]string{"--preview", "--resume", "session-123"})
+	if err == nil {
+		t.Fatal("expected error for --preview with --resume")
+	}
+	if !strings.Contains(err.Error(), "--preview and --resume") {
+		t.Errorf("error = %q; want preview/resume conflict", err.Error())
 	}
 }
 

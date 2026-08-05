@@ -19,11 +19,15 @@ jobs:
     timeout-minutes: 15
     container:
       image: golang:1.26.5
+      options: --cpus=2
     steps:
       - uses: actions/checkout@v7
 
       - name: Trust workspace
         run: git config --global --replace-all safe.directory '*'
+
+      - name: Verify license headers
+        run: bash scripts/verify-license.sh
 
       - name: Check formatting
         run: |
@@ -48,7 +52,7 @@ jobs:
 
       - name: Govulncheck
         run: |
-          go install golang.org/x/vuln/cmd/govulncheck@latest
+          go install golang.org/x/vuln/cmd/govulncheck@v1.6.0
           govulncheck ./...
 
       - name: Test with coverage
@@ -90,6 +94,7 @@ jobs:
     timeout-minutes: 10
     container:
       image: golang:1.26.5
+      options: --cpus=2
     strategy:
       fail-fast: false
       matrix:

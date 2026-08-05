@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 alibaba/open-code-review Contributors
+
 package main
 
 import (
@@ -41,6 +44,10 @@ Output review spec for host-agent delegation (no LLM required).`,
 
   # Get rules for multiple files (grouped by content)
   ocr delegate rule internal/agent/agent.go internal/llm/client.go`,
+	Args: cobra.NoArgs,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return cmd.Help()
+	},
 }
 
 var delegatePreviewCmd = &cobra.Command{

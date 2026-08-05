@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 alibaba/open-code-review Contributors
+
 package main
 
 import (
@@ -1642,7 +1645,7 @@ func (m *providerTUIModel) blurManualStep() {
 	}
 }
 
-func (m providerTUIModel) focusManualStep() tea.Cmd {
+func (m *providerTUIModel) focusManualStep() tea.Cmd {
 	switch m.manualStep {
 	case manualStepURL:
 		return m.manualURLInput.Focus()

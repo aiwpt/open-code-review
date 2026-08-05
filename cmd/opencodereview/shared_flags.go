@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 alibaba/open-code-review Contributors
+
 package main
 
 import (
@@ -42,11 +45,15 @@ func addConcurrencyFlags(cmd *cobra.Command, concurrency, timeout, maxTools, max
 	cmd.Flags().IntVar(timeout, "timeout", 10, "concurrent task timeout in minutes")
 	cmd.Flags().IntVar(maxTools, "max-tools", 0, "max tool call rounds per file (0 = template default; min 10)")
 	cmd.Flags().IntVar(maxGitProcs, "max-git-procs", 16, "max concurrent git subprocesses")
-	cmd.Flags().IntVar(maxTokensBudget, "max-tokens-budget", 0, "cap total token usage; dispatch stops once exceeded (0 = unlimited)")
+	cmd.Flags().IntVar(maxTokensBudget, "max-tokens-budget", 0, "cap total token usage (input+output) for this review; dispatch stops once exceeded and skipped files are reported as failed(budget). Partial results are published and review exits 0; it exits non-zero only if every selected item failed (0 = unlimited)")
 }
 
 func addModelFlag(cmd *cobra.Command, target *string) {
 	cmd.Flags().StringVar(target, "model", "", "override LLM model for this run (e.g., claude-opus-4-6)")
+}
+
+func addProviderFlag(cmd *cobra.Command, target *string) {
+	cmd.Flags().StringVar(target, "provider", "", "override configured LLM provider for this run")
 }
 
 func addToolsFlag(cmd *cobra.Command, target *string) {
@@ -131,6 +138,9 @@ func validateScanOptions(opts *scanOptions) error {
 	if opts.maxGitProcs < 0 {
 		return fmt.Errorf("--max-git-procs must be a non-negative integer (0 means use default 16)")
 	}
+	if opts.preview && opts.resume != "" {
+		return fmt.Errorf("--preview and --resume cannot be used together")
+	}
 	if opts.maxTokensBudget < 0 {
 		return fmt.Errorf("--max-tokens-budget must be a non-negative integer (0 means unlimited)")
 	}
@@ -148,10 +158,12 @@ func registerReviewFlags(cmd *cobra.Command, opts *reviewOptions) {
 	addRepoFlag(cmd, &opts.repoDir)
 	addDiffFlags(cmd, &opts.from, &opts.to, &opts.commit)
 	cmd.Flags().StringVar(&opts.resume, "resume", "", "resume from a previous review session id")
+	cmd.RegisterFlagCompletionFunc("resume", completeSessionIDs)
 	addExcludeFlag(cmd, &opts.excludes)
 	addOutputFlags(cmd, &opts.outputFormat, &opts.audience)
 	addConcurrencyFlags(cmd, &opts.concurrency, &opts.perFileTimeout, &opts.maxTools, &opts.maxGitProcs, &opts.maxTokensBudget)
 	addBackgroundFlags(cmd, &opts.background, &opts.backgroundFile)
+	addProviderFlag(cmd, &opts.provider)
 	addModelFlag(cmd, &opts.model)
 	addPreviewFlag(cmd, &opts.preview)
 }
@@ -175,7 +187,9 @@ func registerScanFlags(cmd *cobra.Command, opts *scanOptions) {
 	cmd.Flags().BoolVar(&opts.noDedup, "no-dedup", false, "skip the per-batch DEDUP_TASK")
 	cmd.Flags().BoolVar(&opts.noSummary, "no-summary", false, "skip the post-run PROJECT_SUMMARY_TASK")
 	cmd.Flags().StringVar(&opts.batch, "batch", "", "override BATCH_STRATEGY: none | by-language | by-directory")
+	addProviderFlag(cmd, &opts.provider)
 	addModelFlag(cmd, &opts.model)
+	cmd.Flags().StringVar(&opts.resume, "resume", "", "resume from a previous scan session id")
 	cmd.RegisterFlagCompletionFunc("batch", completeEnum("none", "by-language", "by-directory"))
 }
 

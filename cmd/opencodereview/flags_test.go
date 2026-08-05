@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 alibaba/open-code-review Contributors
+
 package main
 
 import (
@@ -32,6 +35,16 @@ func TestParseReviewFlagsModelOverride(t *testing.T) {
 	}
 	if opts.audience != "human" {
 		t.Errorf("audience = %q, want %q", opts.audience, "human")
+	}
+}
+
+func TestParseReviewFlagsProviderAndModelOverrides(t *testing.T) {
+	opts, err := parseReviewFlags([]string{"--provider", "anthropic", "--model", "claude-opus-4-6"})
+	if err != nil {
+		t.Fatalf("parseReviewFlags: %v", err)
+	}
+	if opts.provider != "anthropic" || opts.model != "claude-opus-4-6" {
+		t.Fatalf("provider=%q model=%q", opts.provider, opts.model)
 	}
 }
 
@@ -144,53 +157,5 @@ func TestParseReviewFlags_ShortFlags(t *testing.T) {
 	}
 	if !opts.preview {
 		t.Error("expected preview=true")
-	}
-}
-
-func TestParseConfigArgs_Empty(t *testing.T) {
-	_, err := parseConfigArgs(nil)
-	if err == nil {
-		t.Fatal("expected error for empty args")
-	}
-}
-
-func TestParseConfigArgs_Set(t *testing.T) {
-	act, err := parseConfigArgs([]string{"set", "llm.model", "gpt-4"})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if act.subCmd != "set" || act.key != "llm.model" || act.value != "gpt-4" {
-		t.Errorf("got %+v", act)
-	}
-}
-
-func TestParseConfigArgs_SetMissingValue(t *testing.T) {
-	_, err := parseConfigArgs([]string{"set", "llm.model"})
-	if err == nil {
-		t.Fatal("expected error for missing value")
-	}
-}
-
-func TestParseConfigArgs_Unset(t *testing.T) {
-	act, err := parseConfigArgs([]string{"unset", "custom_providers.foo"})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if act.subCmd != "unset" || act.key != "custom_providers.foo" {
-		t.Errorf("got %+v", act)
-	}
-}
-
-func TestParseConfigArgs_UnsetMissingKey(t *testing.T) {
-	_, err := parseConfigArgs([]string{"unset"})
-	if err == nil {
-		t.Fatal("expected error for missing key")
-	}
-}
-
-func TestParseConfigArgs_UnknownSubCmd(t *testing.T) {
-	_, err := parseConfigArgs([]string{"delete", "foo"})
-	if err == nil {
-		t.Fatal("expected error for unknown subcommand")
 	}
 }

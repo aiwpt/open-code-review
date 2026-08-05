@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 alibaba/open-code-review Contributors
+
 package rules
 
 import (
@@ -107,6 +110,8 @@ func TestResolve_DefaultRules(t *testing.T) {
 		{"infra/main.bicep", "Hardcoded Secrets"},
 		{"api/v1/user.proto", "Wire Compatibility"},
 		{"service.proto", "Wire Compatibility"},
+		{"src/Main.hs", "Partial Functions"},
+		{"examples/Tutorial.lhs", "Partial Functions"},
 	}
 
 	for _, tt := range tests {
