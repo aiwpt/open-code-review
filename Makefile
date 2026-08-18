@@ -2,7 +2,7 @@
 	build-all dist sha256sum version-info \
 	build-linux-amd64 build-linux-arm64 build-darwin-amd64 build-darwin-arm64 \
 	build-windows-amd64 build-windows-arm64 \
-	license-check license-add
+	license-check license-add english-check
 
 BINARY_NAME := opencodereview
 GO          := go
@@ -37,7 +37,7 @@ PACKAGES := $(shell $(GO) list ./... | grep -v /extensions/)
 test:
 	LC_ALL=C $(GO) test -v -race -count=1 $(PACKAGES)
 
-COVERAGE_THRESHOLD := 80
+COVERAGE_THRESHOLD := 90
 
 coverage:
 	LC_ALL=C $(GO) test -count=1 -coverprofile=coverage.out $(PACKAGES)
@@ -64,7 +64,7 @@ fmt:
 vet:
 	LC_ALL=C $(GO) vet $(PACKAGES)
 
-check: license-check
+check: license-check english-check
 	$(GO) mod tidy
 	gofmt -s -w .
 	LC_ALL=C $(GO) vet $(PACKAGES)
@@ -72,6 +72,9 @@ check: license-check
 
 license-check:
 	@bash scripts/verify-license.sh
+
+english-check:
+	@$(GO) run scripts/verify-english-only.go
 
 license-add:
 	@bash scripts/add-license.sh

@@ -49,6 +49,7 @@
   ".ftlx",
   ".astro",
   ".vue",
+  ".ipynb",
   ".svelte",
   ".xml",
   ".yaml",
@@ -81,5 +82,17 @@
   ".proto",
   ".nix",
   ".hs",
-  ".lhs"
+  ".lhs",
+  ".nim",
+  ".nims",
+  ".nimble",
+  ".elm",
+  ".properties",
+  ".po",
+  ".pot",
+  ".jsonnet",
+  ".libsonnet",
+  ".zig",
+  ".thrift",
+  ".capnp"
 ]
