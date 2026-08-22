@@ -26,12 +26,12 @@ func addDiffFlags(cmd *cobra.Command, from, to, commit *string) {
 
 func addBackgroundFlags(cmd *cobra.Command, background, backgroundFile *string) {
 	cmd.Flags().StringVarP(background, "background", "b", "", "optional requirement/business context for the review")
-	cmd.Flags().StringVarP(backgroundFile, "background-file", "B", "", "path to a Markdown file used as review background")
+	cmd.Flags().StringVarP(backgroundFile, "background-file", "B", "", "path to a Markdown file used as review background (takes precedence over --background)")
 }
 
 func addOutputFlags(cmd *cobra.Command, format, audience *string) {
 	cmd.Flags().StringVarP(format, "format", "f", "text", "output format: text, json, or sarif")
-	cmd.Flags().StringVar(audience, "audience", "human", "output audience: human (show progress) or agent (summary only)")
+	cmd.Flags().StringVar(audience, "audience", "human", "output audience: human (show progress; on stderr for json/sarif) or agent (summary only)")
 	cmd.RegisterFlagCompletionFunc("format", completeEnum("text", "json", "sarif"))
 	cmd.RegisterFlagCompletionFunc("audience", completeEnum("human", "agent"))
 }
